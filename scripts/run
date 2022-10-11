@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+# Exit on error. Append || true if you expect an error.
+set -o errexit
+# Exit on error inside any functions or subshells.
+set -o errtrace
+# Do not allow use of undefined vars. Use ${VAR:-} to use an undefined VAR
+set -o nounset
+# Catch the error in case mysqldump fails (but gzip succeeds) in `mysqldump |gzip`
+set -o pipefail
+# Turn on traces, useful while debugging but commented out by default
+#set -o xtrace
+
+nohup lotus daemon --lotus-make-genesis=./devgen.car --genesis-template=./localnet.json --bootstrap=false </dev/null &>/dev/null &
+sleep 30
+lotus wallet import --as-default ./.genesis-sectors/pre-seal-t01000.key
+lotus-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=./.genesis-sectors --pre-sealed-metadata=./.genesis-sectors/pre-seal-t01000.json --nosync
+lotus-miner run --nosync
