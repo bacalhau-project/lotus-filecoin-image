@@ -1,0 +1,11 @@
+.dockerignore
+.editorconfig
+.git
+.github
+.gitignore
+.idea
+Dockerfile
+LICENSE
+Makefile
+README.md
+tests
