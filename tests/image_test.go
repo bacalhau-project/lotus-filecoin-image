@@ -23,7 +23,7 @@ import (
 	lotusapi "github.com/filecoin-project/lotus/api"
 )
 
-func TestName(t *testing.T) {
+func TestImage(t *testing.T) {
 	img := os.Getenv("TEST_IMAGE")
 	require.NotEmpty(t, img)
 
@@ -117,7 +117,7 @@ func waitUntilHealthy(t *testing.T, containerId string) {
 			return container.Health.Status, nil
 		}
 
-		return "", fmt.Errorf("health status: %s, %v", container.Health.Status, container.Health.Log)
+		return "", fmt.Errorf("health status: %s, %#v", container.Health.Status, container.Health.Log)
 	})
 }
 

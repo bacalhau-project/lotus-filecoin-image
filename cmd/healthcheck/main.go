@@ -20,7 +20,7 @@ import (
 func main() {
 	port, err := portNumber()
 	if err != nil {
-		log.Fatalf("Unable to find port number: %v\n", err)
+		fatal("Unable to find port number: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -28,19 +28,24 @@ func main() {
 
 	lotus, closer, err := lotusApi(ctx, port)
 	if err != nil {
-		log.Fatalf("Failed to create API: %v\n", err)
+		fatal("Failed to create API: %v", err)
 	}
 	defer closer()
 
 	// Wait for `lotus daemon` to start
 	if err := checkDaemonRunning(ctx, lotus); err != nil {
-		log.Fatalf("lotus daemon not running: %v\n", err)
+		fatal("lotus daemon not running: %v", err)
 	}
 
 	// Wait for `lotus-miner run` to finish starting
 	if err := checkMinerRunning(ctx, port); err != nil {
-		log.Fatalf("lotus-miner not running: %v\n", err)
+		fatal("lotus-miner not running: %v", err)
 	}
+}
+
+func fatal(format string, v ...any) {
+	fmt.Printf(format, v...)
+	os.Exit(1)
 }
 
 func portNumber() (int, error) {
