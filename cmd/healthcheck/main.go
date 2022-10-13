@@ -77,18 +77,18 @@ func portNumber() (int, error) {
 	return port, nil
 }
 
-func lotusApi(ctx context.Context, port int) (api.FullNodeStruct, func(), error) {
+func lotusApi(ctx context.Context, port int) (api.FullNode, func(), error) {
 	addr := fmt.Sprintf("ws://localhost:%d/rpc/v0", port)
 
 	var lotus api.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", []interface{}{&lotus.Internal, &lotus.CommonStruct.Internal}, nil)
 	if err != nil {
-		return api.FullNodeStruct{}, nil, err
+		return nil, nil, err
 	}
-	return lotus, closer, nil
+	return &lotus, closer, nil
 }
 
-func checkDaemonRunning(ctx context.Context, lotus api.FullNodeStruct) error {
+func checkDaemonRunning(ctx context.Context, lotus api.FullNode) error {
 	state, err := lotus.SyncState(ctx)
 	if err != nil {
 		return err
