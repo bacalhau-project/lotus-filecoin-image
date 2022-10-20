@@ -33,7 +33,7 @@ token:
 
 .PHONY: log
 log:
-	docker logs --follow $(shell docker ps --quiet --filter=label=network=local --filter=label=filecoin=lotus)
+	docker logs --follow $(shell docker ps --quiet --filter=label=network=local --filter=label=filecoin=lotus) 2>&1
 
 .PHONY: clean
 clean:
