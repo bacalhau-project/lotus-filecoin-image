@@ -85,7 +85,8 @@ RUN lotus-seed genesis add-miner ~/localnet.json ~/.genesis-sectors/pre-seal-t01
 
 COPY --from=utils /usr/local/bin/healthcheck /usr/local/bin/healthcheck
 
-COPY --chown=2000:2000 config/config.toml $LOTUS_PATH/config.toml
+COPY --chown=2000:2000 config/daemon.toml $LOTUS_PATH/config.toml
+COPY --chown=2000:2000 config/miner.toml $LOTUS_MINER_PATH/config.toml
 COPY --chown=0:0 scripts/run /usr/local/bin/run-lotus
 
 HEALTHCHECK --interval=5s --timeout=2s --start-period=1m CMD ["/usr/local/bin/healthcheck"]

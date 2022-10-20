@@ -1,0 +1,7 @@
+[Sealing]
+  MaxWaitDealsSectors = 1
+  BatchPreCommits = false
+  WaitDealsDelay = "5m0s"
+  CommitBatchSlack = "5m0s"
+  MaxPreCommitBatch = 1
+  AggregateCommits = false

@@ -8,3 +8,11 @@ make it easier to test interacting with the [FileCoin network](https://filecoin.
 The image is configured with a health check that will become healthy once the daemon and miner are up and running. A
 token can be found within the container at `/home/lotus_user/.lotus-local-net/token`, which can be used to access the
 API from outside the container.
+
+
+## Useful commands
+* `lotus client list-deals` - what state are the deals in?
+* `lotus-miner sectors list` - what state are the blocks behind the deals in?
+* `lotus-miner proving info`
+* `lotus-miner sealing jobs` - are we actively sealing something?
+* `lotus-miner sealing workers`

@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -126,17 +125,12 @@ func lotusApi(t *testing.T, ctx context.Context, port uint16, tokenFile string) 
 	require.NoError(t, err)
 
 	headers := http.Header{"Authorization": []string{"Bearer " + string(token)}}
-	addr := fmt.Sprintf("ws://localhost:%d/rpc/v0", port)
+	addr := fmt.Sprintf("ws://localhost:%d/rpc/v1", port)
 
 	var api lotusapi.FullNodeStruct
 
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", []interface{}{&api.Internal, &api.CommonStruct.Internal}, headers)
 	require.NoError(t, err)
-	if err != nil {
-		log.Fatalf("connecting with lotus failed: %s", err)
-	}
-	t.Cleanup(func() {
-		closer()
-	})
+	t.Cleanup(closer)
 	return api
 }
