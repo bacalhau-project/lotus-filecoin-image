@@ -1,8 +1,11 @@
 # build container stage
-FROM golang:1.18.1-buster AS build-env
+FROM golang:1.18-buster AS build-env
 
 RUN apt-get update -y && \
     apt-get install sudo cron git mesa-opencl-icd gcc bzr jq pkg-config clang libhwloc-dev ocl-icd-opencl-dev build-essential hwloc -y
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 ENV LOTUS_PATH="~/.lotus-local-net"
 ENV LOTUS_MINER_PATH="~/.lotus-miner-local-net"
@@ -12,23 +15,17 @@ ENV LOTUS_SKIP_GENESIS_CHECK="_yes_"
 ENV RUSTFLAGS="-C target-cpu=native -g"
 ENV FFI_BUILD_FROM_SOURCE=1
 ENV NETWORK="2k"
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Tag of the lotus version to build
+ENV BRANCH=v1.17.2
 
 WORKDIR /src
 
-# Tag of the lotus version to build
-ARG BRANCH
-
-RUN git clone https://github.com/filecoin-project/lotus.git --depth 1 --branch $BRANCH && \
-    cd lotus && \
-    git submodule update --init --recursive && \
-    make clean && \
-    make $NETWORK
+RUN git clone https://github.com/filecoin-project/lotus.git --depth 1 --branch $BRANCH /src/lotus
+RUN cd /src/lotus && git submodule update --init --recursive
+RUN cd /src/lotus && make $NETWORK
 
 # building the healthcheck util, to know when Lotus is ready for use
-FROM golang:1.18.1-buster AS utils
+FROM golang:1.18-buster AS utils
 
 WORKDIR /src
 
@@ -47,9 +44,6 @@ LABEL filecoin=lotus
 ENV DEBIAN_FRONTEND noninteractive
 ENV LOTUS_USER="lotus_user"
 
-# Add useful debug tools
-RUN  apt-get update && apt-get install curl nano -y && rm -rf /var/lib/apt/lists/*
-
 # create nonroot user and lotus folder
 RUN adduser --uid 2000 --gecos "" --disabled-password --quiet $LOTUS_USER
 
@@ -59,16 +53,16 @@ COPY --from=build-env /src/lotus/lotus-shed /usr/local/bin/lotus-shed
 COPY --from=build-env /src/lotus/lotus-miner /usr/local/bin/lotus-miner
 COPY --from=build-env /src/lotus/lotus-seed /usr/local/bin/lotus-seed
 COPY --from=build-env /etc/ssl/certs /etc/ssl/certs
-COPY --from=build-env /lib/x86_64-linux-gnu /lib/
+COPY --from=build-env /lib/*-linux-gnu /lib/
 # lotus libraries
-COPY --from=build-env /lib/x86_64-linux-gnu/libutil.so.1 \
-                      /lib/x86_64-linux-gnu/librt.so.1 \
-                      /lib/x86_64-linux-gnu/libgcc_s.so.1 \
-                      /lib/x86_64-linux-gnu/libdl.so.2 \
-                      /usr/lib/x86_64-linux-gnu/libltdl.so.7 \
-                      /usr/lib/x86_64-linux-gnu/libnuma.so.1 \
-                      /usr/lib/x86_64-linux-gnu/libhwloc.so.5 /lib/
-COPY --from=build-env /usr/lib/x86_64-linux-gnu/libOpenCL.so.1.0.0 /lib/libOpenCL.so.1
+COPY --from=build-env /lib/*-linux-gnu/libutil.so.1 \
+                      /lib/*-linux-gnu/librt.so.1 \
+                      /lib/*-linux-gnu/libgcc_s.so.1 \
+                      /lib/*-linux-gnu/libdl.so.2 \
+                      /usr/lib/*-linux-gnu/libltdl.so.7 \
+                      /usr/lib/*-linux-gnu/libnuma.so.1 \
+                      /usr/lib/*-linux-gnu/libhwloc.so.5 /lib/
+COPY --from=build-env /usr/lib/*-linux-gnu/libOpenCL.so.1.0.0 /lib/libOpenCL.so.1
 
 ENV LOTUS_PATH="/home/$LOTUS_USER/.lotus-local-net"
 ENV LOTUS_MINER_PATH="/home/$LOTUS_USER/.lotus-miner-local-net"

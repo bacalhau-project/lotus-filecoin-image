@@ -1,11 +1,17 @@
-IMAGE ?= ghcr.io/bacalhau-project/lotus-filecoin-image
+IMAGE ?= lotus-filecoin-image
 TAG ?= latest
-
-LOTUS_TAG := v1.17.2
 
 .PHONY: build
 build:
-	docker build --build-arg BRANCH=$(LOTUS_TAG) --tag $(IMAGE):$(TAG) .
+	docker build --tag $(IMAGE):$(TAG) .
+
+.PHONY: save
+save:
+	docker save $(IMAGE):$(TAG) | gzip > $(DEST)
+
+.PHONY: load
+load:
+	gunzip --stdout $(DEST) | docker load
 
 .PHONY: test
 test:

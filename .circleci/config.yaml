@@ -1,0 +1,141 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
+
+executors:
+  amd64:
+    machine:
+      image: ubuntu-2204:2022.07.1
+      resource_class: xlarge
+  arm64:
+    machine:
+      image: ubuntu-2204:2022.07.1
+      resource_class: arm.xlarge
+
+jobs:
+  build-image:
+    parallelism: 1
+    environment:
+      GOVER: 1.19.3
+      IMAGE: ghcr.io/bacalhau-project/lotus-filecoin-image
+      TAG: << parameters.prefix >>-<< parameters.target_arch >>
+    working_directory: ~/project
+    executor: << parameters.target_arch >>
+    parameters:
+      target_arch:
+        type: string
+      prefix:
+        type: string
+    steps:
+      - checkout
+      - run:
+          name: Install Go
+          command: |
+            sudo rm -fr /usr/local/go /usr/local/bin/go
+            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-<< parameters.target_arch >>.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+            sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+      - run:
+          name: Set GOCACHE
+          command: echo "export GOCACHE=$HOME/.cache/go-build" >> $BASH_ENV
+      - run:
+          name: Set GOPATH
+          command: echo "export GOPATH=$HOME/go" >> $BASH_ENV
+
+      - restore_cache:
+          name: Restore Go cache
+          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
+
+      - run:
+          name: Build image
+          command: make build
+
+      - run:
+          name: Test image
+          command: make test
+
+      - run:
+          name: Save image
+          environment:
+            DEST: ./<< parameters.target_arch >>.tar.gz
+          command: make save
+
+      - persist_to_workspace:
+          root: .
+          paths:
+            - << parameters.target_arch >>.tar.gz
+
+      - save_cache:
+          name: Saving Go cache
+          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
+          paths:
+            - ~/.cache/go-build
+            - ~/go/pkg/mod
+
+  push-image:
+    parallelism: 1
+    environment:
+      IMAGE: ghcr.io/bacalhau-project/lotus-filecoin-image
+    working_directory: ~/project
+    executor: amd64
+    parameters:
+      prefix:
+        type: string
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: Load arm64 image
+          command: DEST=./arm64.tar.gz make load
+
+      - run:
+          name: Load amd64 image
+          command: DEST=./amd64.tar.gz make load
+
+      - run:
+          name: Create manifest
+          command: |
+            docker manifest create ghcr.io/bacalhau-project/lotus-filecoin-image:<< parameters.prefix >> \
+              $(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE:<< parameters.prefix >>-arm64) \
+              $(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE:<< parameters.prefix >>-amd64)
+
+# TODO docker login to GHCR
+#      - run:
+#          name: Push
+#          command: |
+#            docker push $(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE:<< parameters.prefix >>-arm64)
+#            docker push $(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE:<< parameters.prefix >>-amd64)
+#            docker manifest push $IMAGE:<< parameters.prefix >>
+
+workflows:
+  ci:
+    jobs:
+      - build-image:
+          name: build-<< matrix.target_arch >>
+          matrix:
+            parameters:
+              target_arch: ["amd64", "arm64"]
+              prefix: ["latest"]
+          filters:
+            tags:
+              ignore: /.*/
+  release:
+    jobs:
+      - build-image:
+          name: build-<< matrix.target_arch >>
+          matrix:
+            parameters:
+              target_arch: ["amd64", "arm64"]
+              prefix: [<< pipeline.git.tag >>]
+          filters:
+            branches:
+              ignore: /.*/ # don't run on any branches - only tags
+            tags:
+              only: /.*/
+      - push-image:
+          name: push
+          prefix: << pipeline.git.tag >>
+          requires:
+            - build-image
