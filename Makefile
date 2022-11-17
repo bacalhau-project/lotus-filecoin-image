@@ -1,7 +1,7 @@
 IMAGE ?= ghcr.io/bacalhau-project/lotus-filecoin-image
 TAG ?= latest
 
-LOTUS_TAG := v1.17.2
+LOTUS_TAG := v1.18.0
 
 .PHONY: build
 build:
